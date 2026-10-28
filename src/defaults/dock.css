@@ -1,0 +1,178 @@
+/* 底部 Dock */
+.macos-dock {
+    background-color: transparent;
+    border: none;
+    border-radius: 0;
+    padding: 4px 10px;
+}
+
+.macos-dock .windows-pinned-widget {
+    background-color: transparent;
+    border: none;
+    margin: 0;
+    padding: 0;
+}
+
+.macos-dock .windows-pinned-widget .widget-container {
+    background-color: transparent;
+    padding: 0;
+    margin: 0;
+}
+
+.macos-dock .windows-pinned-widget .pinned-app {
+    background-color: transparent;
+    border: none;
+    border-radius: 8px;
+    margin: 0 3px;
+    padding: 0;
+}
+
+.macos-dock .windows-pinned-widget .pinned-app:hover {
+    background-color: transparent;
+}
+
+.taskbar-widget.window-tabs {
+    padding: 0 4px;
+    margin: 0;
+    background-color: transparent;
+}
+.window-tabs .widget-container {
+    margin: 0;
+    padding: 0;
+    background-color: transparent;
+}
+.window-tabs .app-container {
+    background-color: rgb(36, 36, 36);
+    border: 1px solid #b9bdc7;
+    border-radius: 5px;
+    margin: 3px 2px;
+    padding: 1px 5px;
+}
+.window-tabs .app-container.foreground {
+    border-color: #f0f1f4;
+}
+.window-tabs .app-container:hover {
+    border-color: #e1e3e8;
+}
+.window-tabs .app-title {
+    font-size: 11px;
+    color: #ffffff;
+    padding: 0;
+}
+.window-tabs .tab-action {
+    background-color: transparent;
+    border: none;
+    border-radius: 3px;
+    color: #ffffff;
+    font-size: 15px;
+    padding: 0;
+    margin: 0;
+}
+.window-tabs .tab-action:hover {
+    background-color: rgba(255, 255, 255, 0.18);
+}
+.window-tabs .tab-action.close:hover {
+    background-color: #c42b1c;
+}
+.window-tabs .tab-overflow-button {
+    color: #ffffff;
+    background-color: transparent;
+    border: none;
+    font-size: 20px;
+    padding: 0;
+    margin: 3px 0;
+    border-radius: 5px;
+}
+.window-tabs .tab-overflow-button:hover,
+.window-tabs .tab-overflow-button:pressed {
+    background-color: rgba(255, 255, 255, 0.12);
+}
+.tab-overflow-menu {
+    menu-scrollable: 1;
+}
+.tab-overflow-menu .tab-overflow-item {
+    margin: 2px 6px;
+}
+.tab-overflow-menu .tab-overflow-application {
+    background-color: transparent;
+    border: none;
+    border-radius: 5px;
+    text-align: left;
+    padding: 6px 8px;
+}
+.tab-overflow-menu .tab-overflow-application:hover {
+    background-color: rgba(255, 255, 255, 0.12);
+}
+.tab-overflow-menu .tab-overflow-close {
+    background-color: transparent;
+    border: none;
+    border-radius: 3px;
+    font-size: 15px;
+    padding: 0;
+    margin: 0;
+}
+.tab-overflow-menu .tab-overflow-close:hover {
+    background-color: #c42b1c;
+}
+.systray {
+    padding: 0 4px;
+}
+.yasb-bar .notification-widget,
+.yasb-bar .systray,
+.yasb-bar .clock-widget {
+    border-radius: 6px;
+}
+.yasb-bar .notification-widget:hover,
+.yasb-bar .systray:hover,
+.yasb-bar .clock-widget:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+}
+.systray .unpinned-visibility-btn {
+    font-family: "Segoe Fluent Icons";
+    font-size: 14px;
+    color: #ffffff;
+    background-color: transparent;
+    border: none;
+    padding: 0 5px;
+}
+.systray-popup {
+    background-color: rgb(42, 43, 48);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 10px;
+    padding: 10px;
+}
+.systray-popup .button {
+    padding: 8px;
+    border-radius: 5px;
+}
+.systray-popup .button:hover {
+    background-color: rgba(255, 255, 255, 0.15);
+}
+
+/* 窗口预览 */
+.taskbar-preview {
+    background-color: rgba(42, 43, 48, 0.88);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 14px;
+    padding: 8px;
+}
+
+.taskbar-preview .header {
+    padding: 4px 6px 8px;
+}
+
+.taskbar-preview .title {
+    color: #ffffff;
+    font-size: 12px;
+}
+
+.taskbar-preview .close-button {
+    color: #ffffff;
+    background-color: rgba(255, 255, 255, 0.1);
+    border-radius: 6px;
+    padding: 4px 8px;
+}
+
+.taskbar-preview .close-button:hover {
+    background-color: #d65353;
+}

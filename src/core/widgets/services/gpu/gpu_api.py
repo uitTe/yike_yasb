@@ -1,0 +1,471 @@
+import ctypes
+import logging
+import threading
+from ctypes import Array, byref, c_byte, c_char, wintypes
+from typing import NamedTuple, NotRequired, TypedDict
+
+from comtypes import COMError  # pyright: ignore[reportMissingTypeStubs]
+from PyQt6.QtCore import QObject, QThread, pyqtSignal
+from PyQt6.QtWidgets import QApplication
+
+from core.utils.win32.bindings.adl import (
+    ADL_MAIN_MALLOC_CALLBACK,
+    ADLFanSpeedValue,
+    AdlLibrary,
+    ADLODNFanControl,
+    ADLTemperature,
+)
+from core.utils.win32.bindings.dxgi import CreateDXGIFactory1
+from core.utils.win32.bindings.nvml import NVML_TEMPERATURE_GPU, NvmlLibrary, nvmlMemory_t
+from core.utils.win32.bindings.pdh import pdh
+from core.utils.win32.constants import PDH_FMT_DOUBLE
+from core.utils.win32.structs import PDH_FMT_COUNTERVALUE_ITEM_W
+
+logger = logging.getLogger("gpu_widget")
+
+_VENDOR_NVIDIA = 0x10DE
+_VENDOR_AMD = 0x1002
+_VENDOR_WARP = 0x1414
+
+
+class GpuData(NamedTuple):
+    gpu_index: int
+    name: str
+    utilization: float
+    mem_total: int
+    mem_used: int
+    mem_free: int
+    mem_shared_total: int
+    mem_shared_used: int
+    temp: int
+    fan_speed: int
+    power_draw: float
+
+
+class _DxgiGpu(TypedDict):
+    name: str
+    vram_total: int
+    shared_total: int
+    luid_str: str
+    vendor_id: int
+
+
+class _LuidInfo(TypedDict):
+    index: int
+    name: str
+    vram_total: int
+    shared_total: int
+    nvml_handle: NotRequired[ctypes.c_void_p]
+    adl_index: NotRequired[int]
+
+
+def _luid_str(name: str) -> str:
+    idx = name.lower().find("luid_0x")
+    if idx == -1:
+        return name
+    parts = name[idx:].split("_")
+    return ("_".join(parts[:3]) if len(parts) >= 3 else name).lower()
+
+
+def _read_dxgi_gpus() -> list[_DxgiGpu]:
+    """Enumerate physical GPU adapters via DXGI. Skips Microsoft WARP software adapter."""
+    result: list[_DxgiGpu] = []
+    factory = CreateDXGIFactory1()
+    if factory is None:
+        logger.debug("DXGI enumeration failed: CreateDXGIFactory1")
+        return result
+    index = 0
+    while True:
+        try:
+            adapter = factory.EnumAdapters(index)
+        except COMError:
+            break
+        if not adapter:
+            break
+        index += 1
+        try:
+            desc = adapter.GetDesc()
+        except COMError:
+            continue
+        if desc.VendorId == _VENDOR_WARP:
+            continue
+        high = desc.AdapterLuid.HighPart & 0xFFFFFFFF
+        result.append(
+            {
+                "name": desc.Description.strip(),
+                "vram_total": desc.DedicatedVideoMemory,
+                "shared_total": desc.SharedSystemMemory,
+                "luid_str": f"luid_0x{high:08x}_0x{desc.AdapterLuid.LowPart:08x}",
+                "vendor_id": desc.VendorId,
+            }
+        )
+    return result
+
+
+class _NvmlState:
+    def __init__(self) -> None:
+        self.dll: NvmlLibrary | None = None
+        self.name_map: dict[str, ctypes.c_void_p] = {}
+
+    def load(self) -> None:
+        try:
+            dll = NvmlLibrary()
+            if dll.nvmlInit_v2() != 0:
+                return
+
+            count = ctypes.c_uint()
+            dll.nvmlDeviceGetCount_v2(byref(count))
+            for i in range(count.value):
+                handle = ctypes.c_void_p()
+                if dll.nvmlDeviceGetHandleByIndex_v2(i, byref(handle)) != 0:
+                    continue
+                buf = ctypes.create_string_buffer(96)
+                if dll.nvmlDeviceGetName(handle, buf, 96) == 0:
+                    self.name_map[buf.value.decode("utf-8", "replace")] = handle
+
+            self.dll = dll
+        except OSError:
+            pass
+
+    def get_mem_total(self, handle: ctypes.c_void_p) -> int:
+        if self.dll is None:
+            return 0
+        mem = nvmlMemory_t()
+        return mem.total if self.dll.nvmlDeviceGetMemoryInfo(handle, byref(mem)) == 0 else 0
+
+    def query(self, handle: ctypes.c_void_p) -> tuple[int, int, float]:
+        """Returns (temp_c, fan_pct, power_w)."""
+        if self.dll is None:
+            return 0, 0, 0.0
+        temp, fan, power = ctypes.c_uint(), ctypes.c_uint(), ctypes.c_uint()
+        t = self.dll.nvmlDeviceGetTemperature(handle, NVML_TEMPERATURE_GPU, byref(temp))
+        f = self.dll.nvmlDeviceGetFanSpeed(handle, byref(fan))
+        p = self.dll.nvmlDeviceGetPowerUsage(handle, byref(power))
+        return (
+            temp.value if t == 0 else 0,
+            fan.value if f == 0 else 0,
+            power.value / 1000.0 if p == 0 else 0.0,
+        )
+
+    def shutdown(self) -> None:
+        if self.dll is not None:
+            try:
+                self.dll.nvmlShutdown()
+            except Exception:
+                pass
+            self.dll = None
+
+
+class _AdlState:
+    """OverdriveN first (modern GPUs), Overdrive5 fallback (older GPUs)."""
+
+    def __init__(self) -> None:
+        self.dll: AdlLibrary | None = None
+        self.ctx = ctypes.c_void_p()
+        self.active_indices: list[int] = []
+        self._odn_temp = False
+        self._odn_fan = False
+        self._od5_temp = False
+        self._od5_fan = False
+        self._malloc_blocks: dict[int, Array[c_char]] = {}
+        self._malloc_cb = ADL_MAIN_MALLOC_CALLBACK(self._malloc)
+
+    def _malloc(self, size: int) -> int:
+        """Allocation callback handed to ADL2_Main_Control_Create.
+
+        ADL keeps what this returns until the application frees it, so the block
+        has to outlive the callback. Returning the address of a local buffer
+        gives ADL memory that Python reclaims at the next collection, so keep a
+        reference until shutdown.
+        """
+        buf = ctypes.create_string_buffer(size)
+        addr = ctypes.addressof(buf)
+        self._malloc_blocks[addr] = buf
+        return addr
+
+    def load(self) -> None:
+        try:
+            dll = AdlLibrary()
+            self._odn_temp = dll.has_overdrive_n_temperature
+            self._odn_fan = dll.has_overdrive_n_fan_control
+            self._od5_temp = dll.has_overdrive5_temperature
+            self._od5_fan = dll.has_overdrive5_fan_speed
+
+            ctx = ctypes.c_void_p()
+            if dll.ADL2_Main_Control_Create(self._malloc_cb, 1, byref(ctx)) != 0:
+                return
+
+            count = ctypes.c_int()
+            dll.ADL2_Adapter_NumberOfAdapters_Get(ctx, byref(count))
+            for i in range(count.value):
+                active = ctypes.c_int()
+                if dll.ADL2_Adapter_Active_Get(ctx, i, byref(active)) == 0 and active.value:
+                    self.active_indices.append(i)
+
+            self.dll = dll
+            self.ctx = ctx
+        except OSError:
+            pass
+
+    def query(self, adapter_index: int) -> tuple[int, int]:
+        """Returns (temp_c, fan_pct)."""
+        if self.dll is None:
+            return 0, 0
+
+        temp = 0
+        if self._odn_temp:
+            t_val = ctypes.c_int()
+            if self.dll.ADL2_OverdriveN_Temperature_Get(self.ctx, adapter_index, 1, byref(t_val)) == 0 and t_val.value:
+                temp = t_val.value // 1000
+        if not temp and self._od5_temp:
+            temp_s = ADLTemperature(iSize=ctypes.sizeof(ADLTemperature))
+            if self.dll.ADL2_Overdrive5_Temperature_Get(self.ctx, adapter_index, 0, byref(temp_s)) == 0:
+                temp = temp_s.iTemperature // 1000
+
+        fan = 0
+        if self._odn_fan:
+            fan_ctl = ADLODNFanControl()
+            if self.dll.ADL2_OverdriveN_FanControl_Get(self.ctx, adapter_index, byref(fan_ctl)) == 0:
+                fan = fan_ctl.iCurrentFanSpeed
+        if not fan and self._od5_fan:
+            fan_s = ADLFanSpeedValue(iSize=ctypes.sizeof(ADLFanSpeedValue), iSpeedType=1)
+            if self.dll.ADL2_Overdrive5_FanSpeed_Get(self.ctx, adapter_index, 0, byref(fan_s)) == 0:
+                fan = fan_s.iFanSpeed
+
+        return temp, fan
+
+    def shutdown(self) -> None:
+        if self.dll is not None and self.ctx:
+            try:
+                self.dll.ADL2_Main_Control_Destroy(self.ctx)
+            except Exception:
+                pass
+            self.dll = None
+            # Safe only now that ADL has torn down and cannot touch them again.
+            self._malloc_blocks.clear()
+
+
+class GpuApi:
+    def __init__(self, gpu_indices: set[int]) -> None:
+        self._gpu_indices = gpu_indices
+        self._luid_info: dict[str, _LuidInfo] = {}
+        self._dxgi_gpus: list[_DxgiGpu] = []
+        self._ready = False
+        self._pdh_bufs: dict[int, Array[c_byte]] = {}
+
+        self._nvml = _NvmlState()
+        self._adl = _AdlState()
+
+        self._query = wintypes.HANDLE()
+        self._h_util = wintypes.HANDLE()
+        self._h_mem_ded = wintypes.HANDLE()
+        self._h_mem_shr = wintypes.HANDLE()
+        if pdh.PdhOpenQueryW(None, None, byref(self._query)) != 0:
+            logger.error("GpuApi: PdhOpenQueryW failed")
+            return
+        pdh.PdhAddEnglishCounterW(self._query, r"\GPU Engine(*)\Utilization Percentage", None, byref(self._h_util))
+        pdh.PdhAddEnglishCounterW(self._query, r"\GPU Adapter Memory(*)\Dedicated Usage", None, byref(self._h_mem_ded))
+        pdh.PdhAddEnglishCounterW(self._query, r"\GPU Adapter Memory(*)\Shared Usage", None, byref(self._h_mem_shr))
+
+    def prime(self) -> None:
+        """Seed PDH baseline, enumerate DXGI adapters, load vendor sensor libs."""
+        pdh.PdhCollectQueryData(self._query)
+        util_rows = self._pdh_read_array(self._h_util)
+        mem_rows = self._pdh_read_array(self._h_mem_ded)
+        all_luids = sorted({_luid_str(n) for n, _ in util_rows + mem_rows})
+
+        self._dxgi_gpus = _read_dxgi_gpus()
+        self._luid_info = self._build_luid_info(all_luids)
+
+        needed_vendors: set[int] = set()
+        for g in self._dxgi_gpus:
+            info = self._luid_info.get(g["luid_str"])
+            if info and info["index"] in self._gpu_indices:
+                needed_vendors.add(g["vendor_id"])
+
+        if _VENDOR_NVIDIA in needed_vendors:
+            self._nvml.load()
+            self._bind_nvml()
+        if _VENDOR_AMD in needed_vendors:
+            self._adl.load()
+            self._bind_adl()
+
+        self._ready = True
+
+    def collect(self) -> list[GpuData]:
+        """Collect current GPU data."""
+        if not self._ready:
+            return []
+
+        pdh.PdhCollectQueryData(self._query)
+
+        # Match Task Manager: sum each engine across processes, then take the busiest engine.
+        eng_sum: dict[str, float] = {}
+        for name, val in self._pdh_read_array(self._h_util):
+            eng = name[name.lower().find("luid_") :].lower()
+            eng_sum[eng] = eng_sum.get(eng, 0.0) + val
+
+        util: dict[str, float] = {}
+        for eng, val in eng_sum.items():
+            luid = _luid_str(eng)
+            util[luid] = min(100.0, max(util.get(luid, 0.0), val))
+
+        mem_ded: dict[str, int] = {_luid_str(n): int(v) for n, v in self._pdh_read_array(self._h_mem_ded)}
+        mem_shr: dict[str, int] = {_luid_str(n): int(v) for n, v in self._pdh_read_array(self._h_mem_shr)}
+
+        result: list[GpuData] = []
+        for luid, info in sorted(self._luid_info.items(), key=lambda x: x[1]["index"]):
+            if info["index"] not in self._gpu_indices:
+                continue
+
+            total = info["vram_total"]
+            used = mem_ded.get(luid, 0)
+            temp, fan_speed, power_draw = 0, 0, 0.0
+
+            nvml_handle = info.get("nvml_handle")
+            adl_index = info.get("adl_index", -1)
+            if nvml_handle is not None:
+                temp, fan_speed, power_draw = self._nvml.query(nvml_handle)
+            elif adl_index >= 0:
+                temp, fan_speed = self._adl.query(adl_index)
+
+            result.append(
+                GpuData(
+                    gpu_index=info["index"],
+                    name=info["name"],
+                    utilization=round(util.get(luid, 0.0), 1),
+                    mem_total=total,
+                    mem_used=used,
+                    mem_free=max(0, total - used),
+                    mem_shared_total=info["shared_total"],
+                    mem_shared_used=mem_shr.get(luid, 0),
+                    temp=temp,
+                    fan_speed=fan_speed,
+                    power_draw=power_draw,
+                )
+            )
+        return result
+
+    def available_indices(self) -> set[int]:
+        return {info["index"] for info in self._luid_info.values()}
+
+    def close(self) -> None:
+        pdh.PdhCloseQuery(self._query)
+        self._nvml.shutdown()
+        self._adl.shutdown()
+        self._pdh_bufs.clear()
+        self._ready = False
+
+    def _pdh_read_array(self, counter: wintypes.HANDLE) -> list[tuple[str, float]]:
+        """Read a PDH formatted counter array and reusing buffers."""
+        buf_size = wintypes.DWORD(0)
+        count = wintypes.DWORD(0)
+        pdh.PdhGetFormattedCounterArrayW(counter, PDH_FMT_DOUBLE, byref(buf_size), byref(count), None)
+        if not count.value:
+            return []
+        needed = buf_size.value
+        key = counter.value or 0
+        buf = self._pdh_bufs.get(key)
+        if buf is None or ctypes.sizeof(buf) < needed:
+            buf = (ctypes.c_byte * needed)()
+            self._pdh_bufs[key] = buf
+        buf_size.value = ctypes.sizeof(buf)
+        if pdh.PdhGetFormattedCounterArrayW(counter, PDH_FMT_DOUBLE, byref(buf_size), byref(count), buf) != 0:
+            return []
+        items = ctypes.cast(buf, ctypes.POINTER(PDH_FMT_COUNTERVALUE_ITEM_W))
+        result: list[tuple[str, float]] = []
+        for i in range(count.value):
+            result.append((items[i].szName or "", items[i].FmtValue.doubleValue))
+        return result
+
+    def _build_luid_info(self, all_luids: list[str]) -> dict[str, _LuidInfo]:
+        """Map PDH LUIDs to DXGI adapter info. Index follows DXGI order.
+        Only includes LUIDs that have a matching DXGI adapter."""
+        luid_to_dxgi = {g["luid_str"]: g for g in self._dxgi_gpus}
+        all_luid_set = set(all_luids)
+        dxgi_ordered = [g["luid_str"] for g in self._dxgi_gpus if g["luid_str"] in all_luid_set]
+
+        result: dict[str, _LuidInfo] = {}
+        for i, luid in enumerate(dxgi_ordered):
+            dg = luid_to_dxgi[luid]
+            result[luid] = {
+                "index": i,
+                "name": dg["name"],
+                "vram_total": dg["vram_total"],
+                "shared_total": dg["shared_total"],
+            }
+        return result
+
+    def _bind_nvml(self) -> None:
+        """Bind NVML handles to luid_info entries for NVIDIA GPUs."""
+        for luid, info in self._luid_info.items():
+            dg = next((g for g in self._dxgi_gpus if g["luid_str"] == luid), None)
+            if dg and dg["vendor_id"] == _VENDOR_NVIDIA:
+                handle = self._nvml.name_map.get(dg["name"])
+                if handle:
+                    info["nvml_handle"] = handle
+                    vram = self._nvml.get_mem_total(handle)
+                    if vram:
+                        info["vram_total"] = vram
+
+    def _bind_adl(self) -> None:
+        """Bind ADL adapter indices to luid_info entries for AMD GPUs."""
+        amd_luids = [
+            luid
+            for luid in self._luid_info
+            if any(g["luid_str"] == luid and g["vendor_id"] == _VENDOR_AMD for g in self._dxgi_gpus)
+        ]
+        for luid, adl_idx in zip(amd_luids, self._adl.active_indices):
+            self._luid_info[luid]["adl_index"] = adl_idx
+
+
+class GpuWorker(QThread):
+    _instance: GpuWorker | None = None
+    data_ready = pyqtSignal(list)
+
+    @classmethod
+    def get_instance(cls, update_interval: int) -> GpuWorker:
+        if cls._instance is None:
+            cls._instance = cls(update_interval)
+        return cls._instance
+
+    def add_index(self, index: int) -> None:
+        self._gpu_indices.add(index)
+
+    def __init__(self, update_interval: int, parent: QObject | None = None):
+        super().__init__(parent)
+        self._update_interval = update_interval
+        self._gpu_indices: set[int] = set()
+        self._stop_event = threading.Event()
+        app = QApplication.instance()
+        if app is not None:
+            app.aboutToQuit.connect(self.stop)
+
+    def stop(self) -> None:
+        self._stop_event.set()
+        self.wait(2000)
+        GpuWorker._instance = None
+
+    def run(self) -> None:
+        self._stop_event.clear()
+        api = GpuApi(self._gpu_indices)
+        try:
+            api.prime()
+            available = api.available_indices()
+            missing = self._gpu_indices - available
+            if missing:
+                logger.warning("GpuWorker gpu_index %s not found. Available indices: %s", missing, sorted(available))
+            if not (self._gpu_indices & available):
+                return
+            while not self._stop_event.is_set():
+                try:
+                    data = api.collect()
+                    if not self._stop_event.is_set():
+                        self.data_ready.emit(data)
+                except Exception as e:
+                    logger.error("GpuWorker %s", e)
+                    if not self._stop_event.is_set():
+                        self.data_ready.emit([])
+                self._stop_event.wait(self._update_interval / 1000)
+        finally:
+            api.close()

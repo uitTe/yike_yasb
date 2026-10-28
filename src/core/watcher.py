@@ -1,0 +1,128 @@
+import hashlib
+import logging
+import os
+from os.path import basename
+from typing import override
+
+from watchdog.events import (
+    DirCreatedEvent,
+    DirModifiedEvent,
+    DirMovedEvent,
+    FileCreatedEvent,
+    FileModifiedEvent,
+    FileMovedEvent,
+    PatternMatchingEventHandler,
+)
+from watchdog.observers import Observer
+from watchdog.observers.api import BaseObserver
+
+from core.bar_manager import BarManager
+from core.config import get_config_dir, get_config_path, get_stylesheet_path
+from core.utils.css_processor import CSSProcessor
+from settings import DEFAULT_CONFIG_FILENAME, DEFAULT_STYLES_FILENAME
+
+
+class FileModifiedEventHandler(PatternMatchingEventHandler):
+    styles_file = DEFAULT_STYLES_FILENAME
+    config_file = DEFAULT_CONFIG_FILENAME
+
+    def __init__(self, bar_manager: BarManager):
+        super().__init__()
+        self.bar_manager = bar_manager
+        self._patterns = [self.styles_file, self.config_file]
+        self._ignore_patterns: list[str] = []
+        self._ignore_directories = True
+        self._case_sensitive = False
+        self._last_styles_hash: str | None = None
+        self._last_config_hash = self._file_hash(get_config_path())
+        self._stylesheet_path = self._normalize_path(get_stylesheet_path())
+        self._imported_stylesheets: set[str] = set()
+        self._imported_hashes: dict[str, str] = {}
+        self._observer: BaseObserver | None = None
+        self._watched_dirs: set[str] = set()
+        self._refresh_imported_stylesheets()
+
+    def _normalize_path(self, path: str) -> str:
+        return os.path.normcase(os.path.normpath(path))
+
+    def _refresh_imported_stylesheets(self) -> None:
+        try:
+            processor = CSSProcessor(self._stylesheet_path)
+            processor.process()
+            self._imported_stylesheets = {self._normalize_path(path) for path in processor.imported_files}
+            if self._stylesheet_path:
+                self._imported_stylesheets.add(self._stylesheet_path)
+            self._patterns = [self.styles_file, self.config_file, *self._imported_stylesheets]
+            self._ensure_watch_paths()
+        except Exception:
+            logging.exception("Failed to refresh imported stylesheets list")
+
+    def set_observer(self, observer: BaseObserver) -> None:
+        self._observer = observer
+        self._ensure_watch_paths()
+
+    def _ensure_watch_paths(self) -> None:
+        if not self._observer:
+            return
+        paths = {get_config_dir()}
+        for css_path in self._imported_stylesheets:
+            if css_path:
+                paths.add(os.path.dirname(css_path))
+        for path in {self._normalize_path(path) for path in paths}:
+            if path and path not in self._watched_dirs and os.path.isdir(path):
+                self._observer.schedule(self, path=path, recursive=False)
+                self._watched_dirs.add(path)
+                logging.info("Watching directory: %s", path)
+
+    def _file_hash(self, path: str) -> str | None:
+        try:
+            with open(path, "rb") as f:
+                return hashlib.md5(f.read()).hexdigest()
+        except Exception:
+            return None
+
+    @override
+    def on_modified(self, event: DirModifiedEvent | FileModifiedEvent) -> None:
+        self._on_file_changed(os.fsdecode(event.src_path))
+
+    @override
+    def on_created(self, event: DirCreatedEvent | FileCreatedEvent) -> None:
+        self._on_file_changed(os.fsdecode(event.src_path))
+
+    @override
+    def on_moved(self, event: DirMovedEvent | FileMovedEvent) -> None:
+        # 原子保存通过临时文件替换目标文件，需要读取重命名后的目标路径。
+        self._on_file_changed(os.fsdecode(event.dest_path))
+
+    def _on_file_changed(self, src_path: str) -> None:
+        modified_file = basename(src_path)
+        normalized_path = self._normalize_path(src_path)
+
+        if modified_file == self.styles_file and self.bar_manager.config.watch_stylesheet:
+            new_hash = self._file_hash(src_path)
+            if new_hash and new_hash != self._last_styles_hash:
+                self._last_styles_hash = new_hash
+                self._refresh_imported_stylesheets()
+                self.bar_manager.styles_modified.emit()
+                logging.debug("Stylesheet modified: %s", src_path)
+        elif modified_file == self.config_file and self.bar_manager.config.watch_config:
+            new_hash = self._file_hash(src_path)
+            if new_hash and new_hash != self._last_config_hash:
+                self._last_config_hash = new_hash
+                self.bar_manager.config_modified.emit()
+                logging.debug("Config file modified: %s", src_path)
+        elif normalized_path in self._imported_stylesheets and self.bar_manager.config.watch_stylesheet:
+            new_hash = self._file_hash(src_path)
+            if new_hash and self._imported_hashes.get(normalized_path) != new_hash:
+                self._imported_hashes[normalized_path] = new_hash
+                self._refresh_imported_stylesheets()
+                self.bar_manager.styles_modified.emit()
+                logging.debug("Imported stylesheet modified: %s", src_path)
+
+
+def create_observer(bar_manager: BarManager) -> BaseObserver:
+    event_handler = FileModifiedEventHandler(bar_manager)
+    observer = Observer()
+    event_handler.set_observer(observer)
+    logging.info("Created file watcher")
+    return observer

@@ -1,0 +1,48 @@
+language: en
+watch_config: true
+watch_stylesheet: true
+bars:
+  primary-bar:
+    screens: ["*"]
+    class_name: yasb-bar
+    alignment:
+      position: top
+      align: center
+    dimensions:
+      width: 100%
+      height: 48
+    collapse:
+      enabled: true
+      collapsed_height: 34
+      start_collapsed: true
+    widgets:
+      left: []
+      center: [clock]
+      right: [cpu, memory, volume]
+widgets:
+  home:
+    type: yasb.home.HomeWidget
+    options:
+      label: "\uE8A9"
+      menu_list:
+        - title: User Home
+          path: "~"
+        - title: Download
+          path: "~\\Downloads"
+        - title: Documents
+          path: "~\\Documents"
+        - title: Pictures
+          path: "~\\Pictures"
+  clock:
+    type: yasb.clock.ClockWidget
+    options:
+      label: "{%H:%M}"
+      callbacks:
+        on_left: toggle_calendar
+        on_right: context_menu
+  cpu:
+    type: yasb.cpu.CpuWidget
+  memory:
+    type: yasb.memory.MemoryWidget
+  volume:
+    type: yasb.volume.VolumeWidget

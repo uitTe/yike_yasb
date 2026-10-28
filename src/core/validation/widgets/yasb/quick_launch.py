@@ -1,0 +1,206 @@
+from typing import Literal
+
+from pydantic import Field
+
+from core.validation.widgets.base_model import (
+    CallbacksConfig,
+    CustomBaseModel,
+    KeybindingConfig,
+)
+
+
+class QuickLaunchPopupConfig(CustomBaseModel):
+    width: int = 720
+    height: int = 480
+    blur: bool = True
+    round_corners: bool = True
+    round_corners_type: str = "normal"
+    border_color: str = "System"
+    dark_mode: bool = True
+
+
+class QuickLaunchCallbacksConfig(CallbacksConfig):
+    on_left: str = "toggle_quick_launch"
+    on_middle: str = "do_nothing"
+    on_right: str = "do_nothing"
+
+
+class AppsProviderConfig(CustomBaseModel):
+    enabled: bool = True
+    prefix: str = "*"
+    priority: int = 0
+    show_recent: bool = True
+    max_recent: int = 10
+    show_description: bool = True
+
+
+class CalculatorProviderConfig(CustomBaseModel):
+    enabled: bool = False
+    prefix: str = "="
+    priority: int = 0
+
+
+class SystemCommandsProviderConfig(CustomBaseModel):
+    enabled: bool = False
+    prefix: str = ">"
+    priority: int = 0
+
+
+class SettingsProviderConfig(CustomBaseModel):
+    enabled: bool = False
+    prefix: str = "@"
+    priority: int = 0
+
+
+class KillProcessProviderConfig(CustomBaseModel):
+    enabled: bool = False
+    prefix: str = "!"
+    priority: int = 0
+
+
+class FileSearchProviderConfig(CustomBaseModel):
+    enabled: bool = False
+    prefix: str = "/"
+    priority: int = 0
+    backend: Literal["auto", "everything", "index", "disk"] = "auto"
+    show_path: bool = True
+    show_preview: bool = False
+
+
+class BookmarksProviderConfig(CustomBaseModel):
+    enabled: bool = False
+    prefix: str = "*"
+    priority: int = 0
+    browser: str = "all"
+    profile: str = "Default"
+
+
+class UnitConverterProviderConfig(CustomBaseModel):
+    enabled: bool = False
+    prefix: str = "~"
+    priority: int = 0
+
+
+class EmojiProviderConfig(CustomBaseModel):
+    enabled: bool = False
+    prefix: str = ":"
+    priority: int = 0
+
+
+class SnippetsProviderConfig(CustomBaseModel):
+    enabled: bool = True
+    prefix: str = ";"
+    priority: int = 0
+    type_delay: int = 200
+
+
+class ColorProviderConfig(CustomBaseModel):
+    enabled: bool = True
+    prefix: str = "c:"
+    priority: int = 0
+
+
+class ClipboardHistoryProviderConfig(CustomBaseModel):
+    enabled: bool = False
+    prefix: str = "cb"
+    priority: int = 0
+    max_items: int = 30
+    show_preview: bool = True
+
+
+class PortViewerProviderConfig(CustomBaseModel):
+    enabled: bool = False
+    prefix: str = "pv"
+    priority: int = 0
+    tcp_listening_only: bool = True
+    include_established: bool = False
+
+
+class WorldClockProviderConfig(CustomBaseModel):
+    enabled: bool = False
+    prefix: str = "tz"
+    priority: int = 0
+
+
+class DevToolsProviderConfig(CustomBaseModel):
+    enabled: bool = False
+    prefix: str = "dev"
+    priority: int = 0
+
+
+class IpInfoProviderConfig(CustomBaseModel):
+    enabled: bool = False
+    prefix: str = "ip"
+    priority: int = 0
+
+
+class VSCodeProviderConfig(CustomBaseModel):
+    enabled: bool = False
+    prefix: str = "vsc"
+    priority: int = 0
+    state_storage_path: str = ""
+
+
+class WindowSwitcherProviderConfig(CustomBaseModel):
+    enabled: bool = False
+    prefix: str = "win"
+    priority: int = 0
+
+
+class WindowsTerminalProviderConfig(CustomBaseModel):
+    enabled: bool = False
+    prefix: str = "wt"
+    priority: int = 0
+
+
+class WslProviderConfig(CustomBaseModel):
+    enabled: bool = False
+    prefix: str = "wsl"
+    priority: int = 0
+
+
+class SshProviderConfig(CustomBaseModel):
+    enabled: bool = False
+    prefix: str = "ssh"
+    priority: int = 0
+    ssh_config_path: str = ""
+
+
+class QuickLaunchProvidersConfig(CustomBaseModel):
+    apps: AppsProviderConfig = AppsProviderConfig()
+    bookmarks: BookmarksProviderConfig = BookmarksProviderConfig()
+    calculator: CalculatorProviderConfig = CalculatorProviderConfig()
+    clipboard_history: ClipboardHistoryProviderConfig = ClipboardHistoryProviderConfig()
+    color: ColorProviderConfig = ColorProviderConfig()
+    dev_tools: DevToolsProviderConfig = DevToolsProviderConfig()
+    emoji: EmojiProviderConfig = EmojiProviderConfig()
+    file_search: FileSearchProviderConfig = FileSearchProviderConfig()
+    ip_info: IpInfoProviderConfig = IpInfoProviderConfig()
+    kill_process: KillProcessProviderConfig = KillProcessProviderConfig()
+    port_viewer: PortViewerProviderConfig = PortViewerProviderConfig()
+    settings: SettingsProviderConfig = SettingsProviderConfig()
+    snippets: SnippetsProviderConfig = SnippetsProviderConfig()
+    ssh: SshProviderConfig = SshProviderConfig()
+    system_commands: SystemCommandsProviderConfig = SystemCommandsProviderConfig()
+    unit_converter: UnitConverterProviderConfig = UnitConverterProviderConfig()
+    vscode: VSCodeProviderConfig = VSCodeProviderConfig()
+    window_switcher: WindowSwitcherProviderConfig = WindowSwitcherProviderConfig()
+    windows_terminal: WindowsTerminalProviderConfig = WindowsTerminalProviderConfig()
+    world_clock: WorldClockProviderConfig = WorldClockProviderConfig()
+    wsl: WslProviderConfig = WslProviderConfig()
+
+
+class QuickLaunchConfig(CustomBaseModel):
+    label: str = "\uf002"
+    search_placeholder: str = "Search applications..."
+    remember_last_query: bool = False
+    max_results: int = Field(default=50, ge=1, le=500)
+    show_icons: bool = True
+    icon_size: int = 32
+    home_page: bool = False
+    compact_mode: bool = False
+    compact_text: bool = False
+    providers: QuickLaunchProvidersConfig = QuickLaunchProvidersConfig()
+    popup: QuickLaunchPopupConfig = QuickLaunchPopupConfig()
+    keybindings: list[KeybindingConfig] = []
+    callbacks: QuickLaunchCallbacksConfig = QuickLaunchCallbacksConfig()

@@ -1,0 +1,311 @@
+/* Codex 用量弹窗 */
+.codex-usage .label {
+    padding-left: 5px;
+}
+.codex-usage .progress-container {
+    margin-left: 3px;
+}
+.codex-usage-menu {
+    background-color: rgb(36, 36, 36);
+    min-width: 400px;
+    max-width: 400px;
+    color: var(--yasb-fg);
+    font-family: var(--system-font);
+}
+.codex-usage-menu QLabel,
+.codex-usage-menu QStackedWidget {
+    background-color: transparent;
+    border: none;
+}
+.codex-usage-menu .header {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--yasb-white-alpha-08);
+}
+.codex-usage-menu .header .text {
+    font-size: 16px;
+    font-weight: 600;
+}
+.codex-usage-menu .refresh-status {
+    color: var(--yasb-fg-muted);
+    font-size: 11px;
+}
+.codex-usage-menu .path-button {
+    font-family: var(--system-font);
+    font-size: 12px;
+    color: var(--yasb-fg);
+    background-color: var(--yasb-white-alpha-06);
+    border: 1px solid var(--yasb-white-alpha-15);
+    border-radius: 6px;
+    min-height: 28px;
+    padding: 0 10px;
+}
+.codex-usage-menu .path-button:hover,
+.codex-usage-menu .path-button:checked {
+    background-color: var(--yasb-white-alpha-15);
+    border-color: var(--yasb-white-alpha-30);
+}
+.codex-usage-menu .path-button.primary {
+    background-color: #4cc2ff;
+    border-color: #4cc2ff;
+    color: #111111;
+}
+.codex-usage-menu .path-button:disabled {
+    background-color: var(--yasb-white-alpha-03);
+    border-color: var(--yasb-white-alpha-06);
+    color: var(--yasb-fg-muted);
+}
+.codex-usage-menu .path-editor {
+    background-color: rgb(40, 40, 40);
+    border-bottom: 1px solid var(--yasb-white-alpha-08);
+}
+.codex-usage-menu .path-label {
+    color: var(--yasb-fg);
+    font-size: 12px;
+}
+.codex-usage-menu .path-input {
+    font-family: var(--system-font);
+    font-size: 12px;
+    color: var(--yasb-fg);
+    background-color: rgb(28, 28, 28);
+    border: 1px solid var(--yasb-white-alpha-30);
+    border-radius: 5px;
+    min-width: 0;
+    min-height: 28px;
+    padding: 0 8px;
+    selection-background-color: #4cc2ff;
+    selection-color: #111111;
+}
+.codex-usage-menu .path-input:focus {
+    border-color: #4cc2ff;
+}
+.codex-usage-menu .path-error {
+    font-size: 11px;
+    color: #ff8585;
+}
+.codex-usage-menu .refresh-status.success {
+    color: #6ccb5f;
+}
+.codex-usage-menu .refresh-status.error {
+    color: #ff8585;
+}
+.codex-usage-menu .refresh,
+.codex-usage-menu .page-button,
+.codex-usage-menu .month-nav {
+    font-family: 'Segoe Fluent Icons';
+    font-size: 14px;
+    color: var(--yasb-fg);
+    background-color: var(--yasb-white-alpha-06);
+    border: 1px solid var(--yasb-white-alpha-15);
+    border-radius: 6px;
+    min-width: 30px;
+    max-width: 30px;
+    min-height: 28px;
+    max-height: 28px;
+    padding: 0;
+    margin: 0;
+}
+.codex-usage-menu .refresh:hover,
+.codex-usage-menu .page-button:hover,
+.codex-usage-menu .month-nav:hover {
+    background-color: var(--yasb-white-alpha-15);
+    border-color: var(--yasb-white-alpha-30);
+    color: #ffffff;
+}
+.codex-usage-menu .refresh:pressed,
+.codex-usage-menu .page-button:pressed,
+.codex-usage-menu .month-nav:pressed {
+    background-color: var(--yasb-white-alpha-20);
+}
+.codex-usage-menu .refresh:disabled,
+.codex-usage-menu .page-button:disabled,
+.codex-usage-menu .month-nav:disabled {
+    color: var(--yasb-white-alpha-30);
+    background-color: var(--yasb-white-alpha-03);
+    border-color: var(--yasb-white-alpha-06);
+}
+.codex-usage-menu .section {
+    margin: 10px 16px 0 16px;
+    padding: 10px 12px;
+    background-color: var(--yasb-white-alpha-03);
+    border: 1px solid var(--yasb-white-alpha-04);
+    border-radius: 8px;
+}
+.codex-usage-menu .section .title {
+    font-size: 13px;
+    font-weight: 600;
+    padding-bottom: 8px;
+}
+.codex-usage-menu .progress {
+    min-height: 6px;
+    max-height: 6px;
+    background-color: var(--yasb-white-alpha-10);
+    border-radius: 3px;
+}
+.codex-usage-menu .progress .fill {
+    background-color: #0f6bff;
+    border-radius: 3px;
+}
+.codex-usage-menu .progress.low .fill {
+    background-color: #ffc83d;
+}
+.codex-usage-menu .progress.critical .fill {
+    background-color: #ff8585;
+}
+.codex-usage-menu .stats {
+    padding-top: 8px;
+}
+.codex-usage-menu .used,
+.codex-usage-menu .reset,
+.codex-usage-menu .date {
+    color: var(--yasb-fg-muted);
+    font-size: 11px;
+}
+.codex-usage-menu .remaining {
+    font-size: 14px;
+    font-weight: 600;
+}
+.codex-usage-menu .remaining.low {
+    color: #ffc83d;
+}
+.codex-usage-menu .remaining.critical {
+    color: #ff8585;
+}
+.codex-usage-menu .timing {
+    padding-top: 5px;
+}
+.codex-usage-menu .page-nav {
+    padding: 12px 16px 8px 16px;
+}
+.codex-usage-menu .page-indicator {
+    font-size: 12px;
+    font-weight: 600;
+}
+.codex-usage-menu .page {
+    padding: 4px 16px 8px 16px;
+}
+.codex-usage-menu .section-title,
+.codex-usage-menu .activity-title {
+    font-size: 12px;
+    font-weight: 600;
+}
+.codex-usage-menu .section-title {
+    padding-bottom: 8px;
+}
+.codex-usage-menu .overview-tokens {
+    padding-bottom: 10px;
+}
+.codex-usage-menu .periods {
+    background-color: var(--yasb-white-alpha-03);
+    border: 1px solid var(--yasb-white-alpha-04);
+    border-radius: 8px;
+    padding: 8px;
+}
+.codex-usage-menu .period-name,
+.codex-usage-menu .details .name,
+.codex-usage-menu .reset-credits-count,
+.codex-usage-menu .reset-credit-expiration {
+    color: var(--yasb-fg-muted);
+    font-size: 11px;
+}
+.codex-usage-menu .period-value {
+    font-size: 17px;
+    font-weight: 700;
+}
+.codex-usage-menu .details {
+    padding-top: 8px;
+    border-top: 1px solid var(--yasb-white-alpha-08);
+}
+.codex-usage-menu .details .value {
+    font-size: 12px;
+}
+.codex-usage-menu .details .status.live {
+    color: #6ccb5f;
+}
+.codex-usage-menu .details .status.stale {
+    color: #ffc83d;
+}
+.codex-usage-menu .error {
+    color: #ff8585;
+    font-size: 11px;
+    max-height: 30px;
+    padding-top: 4px;
+}
+.codex-usage-menu .reset-credit-card {
+    background-color: var(--yasb-white-alpha-03);
+    border: 1px solid var(--yasb-white-alpha-04);
+    border-radius: 8px;
+    padding: 6px 10px;
+}
+.codex-usage-menu .reset-credit-title {
+    font-size: 12px;
+    font-weight: 600;
+}
+.codex-usage-menu .model-row {
+    min-height: 29px;
+    max-height: 29px;
+}
+.codex-usage-menu .model-name {
+    min-width: 106px;
+    max-width: 106px;
+    font-size: 11px;
+}
+.codex-usage-menu .model-value {
+    min-width: 60px;
+    max-width: 60px;
+    font-size: 12px;
+}
+.codex-usage-menu .model-bar {
+    min-height: 6px;
+    max-height: 6px;
+    background-color: var(--yasb-white-alpha-10);
+    border-radius: 3px;
+}
+.codex-usage-menu .model-bar .fill {
+    background-color: #0f6bff;
+    border-radius: 3px;
+}
+.codex-usage-menu .row-2 .model-bar .fill { background-color: #4cc2ff; }
+.codex-usage-menu .row-3 .model-bar .fill { background-color: #a68be8; }
+.codex-usage-menu .row-4 .model-bar .fill { background-color: #6ccb5f; }
+.codex-usage-menu .row-5 .model-bar .fill { background-color: #ffc83d; }
+.codex-usage-menu .activity-header {
+    padding-bottom: 6px;
+}
+.codex-usage-menu .month-label {
+    min-width: 110px;
+    max-width: 110px;
+    font-size: 11px;
+    font-weight: 600;
+}
+.codex-usage-menu .heatmap .weekday {
+    color: var(--yasb-fg-muted);
+    font-size: 11px;
+    min-width: 24px;
+    max-width: 24px;
+}
+.codex-usage-menu .heatmap .cell {
+    min-width: 24px;
+    max-width: 24px;
+    min-height: 18px;
+    max-height: 18px;
+    background-color: var(--yasb-white-alpha-08);
+    border-radius: 3px;
+}
+.codex-usage-menu .heatmap .cell.level-1 { background-color: #173b68; }
+.codex-usage-menu .heatmap .cell.level-2 { background-color: #1b579e; }
+.codex-usage-menu .heatmap .cell.level-3 { background-color: #0f6bff; }
+.codex-usage-menu .heatmap .cell.level-4 { background-color: #4cc2ff; }
+.codex-usage-menu .heatmap .cell.future,
+.codex-usage-menu .heatmap .cell.outside {
+    background-color: transparent;
+}
+.codex-usage-menu .heatmap .cell.unavailable {
+    background-color: transparent;
+    border: 1px solid var(--yasb-white-alpha-08);
+}
+.codex-usage-menu .empty-state,
+.codex-usage-menu .history-note {
+    color: var(--yasb-fg-muted);
+    font-size: 11px;
+    padding-top: 6px;
+}

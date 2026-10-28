@@ -1,0 +1,478 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/uitTe/yike_yasb/main/schema.json
+
+# YASB Yike 默认配置。
+# 配置说明：https://github.com/uitTe/yike_yasb/tree/main/docs
+language: zh_CN
+watch_stylesheet: true
+watch_config: true
+debug: false
+window_animations: false
+bars:
+  primary-bar:
+    enabled: true
+    screens:
+      - "*"
+    class_name: yasb-bar
+    alignment:
+      position: top
+      align: center
+    animation:
+      enabled: true
+      duration: 300
+    blur_effect:
+      enabled: true
+      round_corners: false
+      round_corners_type: normal
+      border_color: system
+    window_flags:
+      always_on_top: false
+      windows_app_bar: true
+    dimensions:
+      width: 100%
+      height: 48
+    collapse:
+      enabled: true
+      collapsed_height: 34
+      start_collapsed: true
+    padding:
+      top: 0
+      left: 0
+      bottom: 0
+      right: 0
+    widgets:
+      left:
+        - quick_launch
+        - window_tabs
+      center: []
+      right:
+        - media
+        - codex_usage
+        - open_meteo
+        - system_status
+        - systray
+        - clock
+        - power_menu
+  macos-dock:
+    enabled: true
+    screens: ["*"]
+    class_name: macos-dock
+    alignment:
+      position: bottom
+      align: center
+    animation:
+      enabled: true
+      duration: 220
+      type: fade
+    blur_effect:
+      enabled: false
+      dark_mode: true
+      round_corners: false
+      round_corners_type: normal
+      border_color: None
+    window_flags:
+      always_on_top: false
+      windows_app_bar: false
+      hide_windows_taskbar: true
+      hide_on_fullscreen: false
+      hide_on_maximized: false
+      auto_hide: false
+    dimensions:
+      width: auto
+      height: 64
+    padding:
+      top: 0
+      left: 0
+      bottom: 12
+      right: 0
+    widgets:
+      left: []
+      center: [windows_pins]
+      right: []
+widgets:
+  system_monitor:
+    type: yasb.system_monitor.SystemMonitorWidget
+    options:
+      update_interval: 2000
+      menu:
+        blur: false
+        show_graph_grid: true
+        alignment: right
+  system_status:
+    type: yasb.system_status.SystemStatusWidget
+    options:
+      tooltip: true
+      popup:
+        blur: false
+        alignment: right
+      sections_order: [sliders, quick_actions]
+      sections:
+        system_controls:
+          show: false
+        power:
+          show: false
+        media:
+          show: false
+        sliders:
+          brightness:
+            icon: "\uE706"
+            show_slider: false
+          volume:
+            icon: "\uE767"
+            show_source_selector: true
+          microphone:
+            icon: "\uEC71"
+            show_source_selector: true
+        quick_actions:
+          columns: 2
+          actions:
+            - id: toggle_mute
+              label: 声音静音
+              icon: "\uE74F"
+            - id: toggle_mic_mute
+              label: 麦克风静音
+              icon: "\uE720"
+  window_tabs:
+    type: yasb.taskbar.TaskbarWidget
+    options:
+      show_pinned: false
+      tab_mode: true
+      tab_max_width: 200
+      icon_size: 16
+      tooltip: true
+      monitor_exclusive: false
+      hide_empty: true
+      animation:
+        enabled: false
+        duration: 180
+      title_label:
+        enabled: true
+        show: always
+        min_length: 0
+      grouping:
+        enabled: false
+        show_count: false
+      preview:
+        enabled: false
+        width: 260
+        delay: 350
+        padding: 10
+        margin: 12
+        blur: true
+      callbacks:
+        on_left: toggle_window
+        on_right: context_menu
+  windows_pins:
+    type: yasb.windows_pinned.WindowsPinnedWidget
+    options:
+      icon_size: 32
+      tooltip: true
+  systray:
+    type: yasb.systray.SystrayWidget
+    options:
+      label_collapsed: "\uE70D"
+      label_expanded: "\uE70E"
+      icon_size: 20
+      show_in_popup: true
+      icons_per_row: 6
+      use_hook: true
+      popup:
+        alignment: right
+        direction: down
+        offset_top: 6
+        offset_left: 0
+        blur: true
+        round_corners: true
+        border_color: System
+  home:
+    type: yasb.home.HomeWidget
+    options:
+      label: "<span>\uE8A9</span>"
+      menu_list:
+        - title: User Home
+          path: "~"
+        - title: Download
+          path: ~\Downloads
+        - title: Documents
+          path: ~\Documents
+        - title: Pictures
+          path: ~\Pictures
+      system_menu: true
+      power_menu: true
+      blur: true
+      round_corners: true
+      round_corners_type: normal
+      border_color: System
+      alignment: left
+      offset_left: -12
+  clock:
+    type: yasb.notification_clock.NotificationClockWidget
+    options:
+      label: "{%H:%M}"
+      label_alt: "{%H:%M %Y/%m/%d}"
+      timezones: []
+      calendar:
+        blur: true
+        round_corners: true
+        alignment: right
+        direction: down
+        extended: false
+        show_years: true
+        show_holidays: false
+        show_week_numbers: true
+      callbacks:
+        on_left: toggle_calendar
+        on_middle: toggle_label
+        on_right: toggle_label
+  volume:
+    type: yasb.volume.VolumeWidget
+    options:
+      label: <span>{icon}</span>
+      label_alt: <span>{icon}</span>{level}
+      tooltip: true
+      icons:
+        muted: "\uE74F"
+        "10": "\uE992"
+        "30": "\uE993"
+        "60": "\uE994"
+        "100": "\uE995"
+      callbacks:
+        on_left: toggle_volume_menu
+        on_right: toggle_mute
+      audio_menu:
+        blur: true
+        round_corners: true
+        round_corners_type: normal
+        border_color: system
+        alignment: right
+        direction: down
+        show_apps: true
+        show_app_labels: false
+        show_app_icons: true
+        show_apps_expanded: false
+        app_icons:
+          toggle_down: "\uE972"
+          toggle_up: "\uE971"
+  notifications:
+    type: yasb.notifications.NotificationsWidget
+    options:
+      label: "<span>\uF2A5</span>"
+      label_alt: "{count} notifications"
+      hide_empty: true
+      tooltip: false
+      callbacks:
+        on_left: toggle_notification
+        on_right: do_nothing
+        on_middle: do_nothing
+  power_menu:
+    type: yasb.power_menu.PowerMenuWidget
+    options:
+      label: "<span>\uE712</span>"
+      uptime: true
+      show_user: true
+      menu_style: popup
+      popup:
+        blur: true
+        round_corners: true
+        round_corners_type: normal
+        border_color: System
+        alignment: right
+        offset_left: 12
+      profile_image_size: 64
+      buttons:
+        lock:
+          - "\uDB80\uDF41"
+          - Lock
+        signout:
+          - "\uDB80\uDF43"
+          - Sign out
+        sleep:
+          - "\uDB82\uDD04"
+          - Sleep
+        hibernate:
+          - "\uDB82\uDD01"
+          - Hibernate
+        restart:
+          - "\uDB81\uDC53"
+          - Restart
+        shutdown:
+          - "\uDB82\uDD06"
+          - Shut Down
+        cancel:
+          - ""
+          - Cancel
+  cpu:
+    type: yasb.cpu.CpuWidget
+    options:
+      label: "<span>\uEEA1</span> {info[percent][total]}%"
+      label_alt: "{info[freq][current]} MHz"
+      update_interval: 2000
+      hide_decimal: true
+      menu:
+        enabled: true
+        show_graph: true
+        show_graph_grid: true
+        graph_history_size: 60
+        alignment: center
+      callbacks:
+        on_left: toggle_menu
+        on_middle: do_nothing
+        on_right: toggle_label
+  memory:
+    type: yasb.memory.MemoryWidget
+    options:
+      label: "<span>\uE9D9</span> {virtual_mem_free}"
+      label_alt: "<span>\uEFC5</span> VIRT: {virtual_mem_percent}% SWAP: {swap_mem_percent}%"
+      update_interval: 5000
+      hide_decimal: true
+      callbacks:
+        on_left: toggle_menu
+        on_middle: do_nothing
+        on_right: toggle_label
+      menu:
+        enabled: true
+        show_graph: true
+        show_graph_grid: true
+        graph_history_size: 60
+        alignment: center
+  quick_launch:
+    type: yasb.quick_launch.QuickLaunchWidget
+    options:
+      label: "<span>\uE71E</span>"
+      search_placeholder: Search applications...
+      max_results: 30
+      show_icons: true
+      icon_size: 16
+      compact_text: true
+      providers:
+        apps:
+          enabled: true
+          prefix: "*"
+          priority: 0
+          show_recent: true
+          max_recent: 5
+          show_description: true
+      popup:
+        width: 720
+        height: 480
+        blur: true
+        round_corners: true
+        round_corners_type: normal
+        border_color: system
+        dark_mode: true
+      callbacks:
+        on_left: toggle_quick_launch
+      keybindings:
+        - keys: ctrl+alt+y
+          action: toggle_quick_launch
+          screen: primary
+  open_meteo:
+    type: yasb.open_meteo.OpenMeteoWidget
+    options:
+      label: "<span>\uE706</span>{temp}"
+      label_alt: "{location}: Min {min_temp}, Max {max_temp}, Humidity {humidity}"
+      tooltip: true
+      update_interval: 600
+      hide_decimal: true
+      units: metric
+      location:
+        name: 湖北省武汉市
+        latitude: 30.58333
+        longitude: 114.26667
+      callbacks:
+        on_left: toggle_card
+        on_middle: do_nothing
+        on_right: toggle_label
+      icons:
+        sunnyDay: "\uE706"
+        clearNight: "\uEC46"
+      weather_card:
+        blur: true
+        alignment: right
+        direction: down
+        icon_size: 32
+        show_hourly_forecast: true
+        time_format: 24h
+        hourly_point_spacing: 76
+        hourly_icon_size: 16
+        icon_smoothing: true
+        temp_line_width: 2
+        current_line_color: "#8EAEE8"
+        current_line_width: 1
+        current_line_style: dot
+        hourly_forecast_buttons:
+          enabled: false
+        weather_animation:
+          enabled: true
+          snow_overrides_rain: true
+          temp_line_animation_style: both
+          rain_effect_intensity: 1.0
+          snow_effect_intensity: 1.0
+          scale_with_chance: true
+  microphone:
+    type: yasb.microphone.MicrophoneWidget
+    options:
+      label: <span>{icon}</span>
+      label_alt: <span>{icon}</span> {level}
+      mute_text: mute
+      icons:
+        normal: "\uEC71"
+        muted: "\uE720"
+      mic_menu:
+        blur: true
+        round_corners: true
+        round_corners_type: normal
+        border_color: system
+        alignment: right
+        direction: down
+      callbacks:
+        on_left: toggle_mic_menu
+        on_middle: toggle_label
+        on_right: toggle_mute
+  media:
+    type: yasb.media.MediaWidget
+    options:
+      label: "{title}{s}{artist}"
+      label_alt: "{title}"
+      separator: " - "
+      hide_empty: true
+      callbacks:
+        on_left: toggle_media_menu
+        on_middle: do_nothing
+        on_right: do_nothing
+      max_field_size:
+        label: 20
+        label_alt: 20
+      show_thumbnail: true
+      controls_only: false
+      controls_left: true
+      controls_hide: true
+      thumbnail_alpha: 100
+      thumbnail_padding: 10
+      thumbnail_edge_fade: true
+      icons:
+        prev_track: "\uE892"
+        next_track: "\uE893"
+        play: "\uE768"
+        pause: "\uE769"
+      media_menu:
+        blur: true
+        round_corners: true
+        round_corners_type: normal
+        border_color: system
+        alignment: center
+        direction: down
+        thumbnail_corner_radius: 8
+        thumbnail_size: 120
+        max_title_size: 60
+        max_artist_size: 20
+        show_volume_slider: true
+      scrolling_label:
+        enabled: true
+        style: bounce
+        update_interval_ms: 40
+  codex_usage:
+    type: yasb.codex_usage.CodexUsageWidget
+    options:
+      progress_bar:
+        size: 48
+        thickness: 5

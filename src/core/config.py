@@ -1,0 +1,147 @@
+import logging
+import os
+import re
+import sys
+from os import path
+from typing import Any, cast
+from xml.dom import SyntaxErr
+
+from pydantic import ValidationError
+from yaml import safe_load
+from yaml.parser import ParserError
+
+from core.i18n import tr
+from core.utils.alert_dialog import raise_info_alert
+from core.utils.css_processor import CSSProcessor
+from core.utils.validation_errors import format_pydantic_errors_to_yaml
+from core.validation.config import YasbConfig
+from settings import DEFAULT_CONFIG_DIRECTORY, DEFAULT_CONFIG_FILENAME, DEFAULT_STYLES_FILENAME, GITHUB_URL
+
+HOME_CONFIGURATION_DIR = DEFAULT_CONFIG_DIRECTORY
+HOME_STYLES_PATH = path.normpath(path.join(HOME_CONFIGURATION_DIR, DEFAULT_STYLES_FILENAME))
+HOME_CONFIG_PATH = path.normpath(path.join(HOME_CONFIGURATION_DIR, DEFAULT_CONFIG_FILENAME))
+GITHUB_ISSUES_URL = f"{GITHUB_URL}/issues"
+
+
+class ConfigValidationError(TypeError):
+    def __init__(self, message: str, errors: str, filetype: str, filepath: str):
+        super().__init__(message)
+        self.errors = errors
+        self.filetype = filetype
+        self.filepath = filepath
+
+
+def get_config_dir() -> str:
+    if not path.isdir(HOME_CONFIGURATION_DIR):
+        raise FileNotFoundError(f"程序配置文件夹不存在：{HOME_CONFIGURATION_DIR}")
+    return HOME_CONFIGURATION_DIR
+
+
+def get_config_path() -> str:
+    return HOME_CONFIG_PATH
+
+
+def get_stylesheet_path() -> str:
+    return HOME_STYLES_PATH
+
+
+def parse_env(obj: Any) -> Any:
+    """
+    Recursively expand $env:VARIABLE_NAME or $Env:VARIABLE_NAME patterns in strings,
+    dicts, and lists.
+    """
+    if isinstance(obj, dict):
+        return {k: parse_env(v) for k, v in cast(dict[Any, Any], obj).items()}
+    elif isinstance(obj, list):
+        return [parse_env(item) for item in cast(list[Any], obj)]
+    elif isinstance(obj, str):
+        pattern = r"\$env:([\w_]+)"
+
+        def repl(match: re.Match[str]) -> str:
+            var = match.group(1)
+            return os.environ.get(var, "")
+
+        obj = re.sub(pattern, repl, obj, flags=re.IGNORECASE)
+    return obj
+
+
+def get_config(show_error_dialog: bool = False) -> YasbConfig | None:
+    config_path = get_config_path()
+
+    try:
+        with open(config_path, encoding="utf-8") as yaml_stream:
+            config = safe_load(yaml_stream)
+
+        try:
+            # Parse environment variables in raw config
+            config = parse_env(config)
+
+            # Validate and normalize with Pydantic
+            validated_config = YasbConfig.model_validate(config)
+
+            # Return as dict for compatibility with the rest of the app
+            return validated_config
+
+        except ValidationError as e:
+            validation_errors = format_pydantic_errors_to_yaml(e)
+            logging.error(
+                "The config file '%s' contains validation errors. Please fix:\n%s",
+                config_path,
+                validation_errors,
+            )
+            if show_error_dialog:
+                raise_info_alert(
+                    title=tr("Failed to load recently updated config file."),
+                    msg=tr("The file '{path}' contains validation error(s) and has not been loaded.", path=config_path),
+                    informative_msg=tr("For more information, click 'Show Details'."),
+                    additional_details=validation_errors,
+                )
+            return None
+    except ParserError as e:
+        logging.error("The file '%s' contains Parser Error(s). Please fix:\n%s", config_path, e)
+    except FileNotFoundError:
+        logging.error("The file '%s' could not be found. Does it exist?", config_path)
+    except OSError:
+        logging.error("The file '%s' could not be read. Do you have read/write permissions?", config_path)
+
+
+def get_stylesheet(show_error_dialog: bool = False) -> str | None:
+    styles_path = get_stylesheet_path()
+    try:
+        css_processor = CSSProcessor(styles_path)
+        css_content = css_processor.process()
+        return css_content
+
+    except SyntaxErr as e:
+        logging.error("The file '%s' contains Syntax Error(s). Please fix:\n%s", styles_path, e)
+        if show_error_dialog:
+            raise_info_alert(
+                title=tr("Failed to load recently updated stylesheet file."),
+                msg=tr("The file '{path}' contains syntax error(s) and has not been loaded.", path=styles_path),
+                informative_msg=tr("For more information, click 'Show Details'."),
+                additional_details=str(e),
+            )
+    except FileNotFoundError:
+        logging.error("The file '%s' could not be found. Does it exist?", styles_path)
+    except OSError:
+        logging.error("The file '%s' could not be read. Do you have read/write permissions?", styles_path)
+    return None
+
+
+def get_config_and_stylesheet() -> tuple[YasbConfig, str]:
+    config = get_config()
+    stylesheet = get_stylesheet()
+    error_msg: str | None = None
+
+    if not config:
+        error_msg = "Program config file could not be loaded. Exiting Application."
+    elif not stylesheet:
+        error_msg = "Program stylesheet could not be loaded. Exiting Application."
+    elif not config.bars:
+        error_msg = "No bars have been configured. Please edit the config to add a status bar."
+    else:
+        return config, stylesheet
+
+    if error_msg:
+        logging.error(error_msg)
+        sys.exit(1)

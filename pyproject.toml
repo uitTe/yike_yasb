@@ -1,0 +1,138 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "yasb-yike"
+dynamic = ["version"]
+description = "YASB Yike - Windows 10 与 11 的状态栏，顶部栏显示运行窗口标签与系统状态，底部 Dock 显示固定应用，使用 Python 与 PyQt6 编写。"
+authors = [
+    { name = "shuf" },
+]
+license = "MIT"
+readme = "README.md"
+requires-python = ">= 3.14"
+dependencies = [
+    "pyqt6==6.10.2",
+    "pydantic==2.13.5",
+    "certifi==2026.10.23",
+    "humanize==4.16.0",
+    "lunar_python==1.4.8",
+    "pyyaml==6.0.3",
+    "ruamel.yaml==0.18.16",
+    "holidays==0.105",
+    "watchdog==6.0.0",
+    "pycaw==20260927",
+    "pillow==13.0.0",
+    "qasync==0.28.0",
+    "comtypes==1.4.17",
+    "python-dotenv==1.2.4",
+    "tzdata==2026.4",
+    "winrt.windows.foundation==3.2.1",
+    "winrt.windows.foundation.collections==3.2.1",
+    "winrt.windows.data.xml.dom==3.2.1",
+    "winrt.windows.media==3.2.1",
+    "winrt.windows.media.control==3.2.1",
+    "winrt.windows.management.deployment==3.2.1",
+    "winrt.windows.applicationmodel==3.2.1",
+    "winrt.windows.applicationmodel.core==3.2.1",
+    "winrt.windows.applicationmodel.datatransfer==3.2.1",
+    "winrt.windows.networking==3.2.1",
+    "winrt.windows.networking.connectivity==3.2.1",
+    "winrt.windows.storage==3.2.1",
+    "winrt.windows.storage.streams==3.2.1",
+    "winrt.windows.ui==3.2.1",
+    "winrt.windows.ui.notifications==3.2.1",
+    "winrt.windows.ui.notifications.management==3.2.1",
+    "winrt.windows.devices.bluetooth==3.2.1",
+    "winrt.windows.devices.display==3.2.1",
+    "winrt.windows.devices.enumeration==3.2.1",
+    "winrt.windows.devices.radios==3.2.1",
+    "winrt.windows.devices.wifi==3.2.1",
+    "winrt.windows.security.credentials==3.2.1",
+    "winrt.windows.ui.viewmanagement==3.2.1",
+    "qt-css-engine @ git+https://github.com/Video-Nomad/qt-css-engine@684e1217d00bf4138ec9bcf6d83c5956ce2ba589",
+]
+
+[project.urls]
+Homepage = "https://github.com/uitTe/yike_yasb"
+Documentation = "https://github.com/uitTe/yike_yasb/tree/main/docs"
+Repository = "https://github.com/uitTe/yike_yasb"
+Issues = "https://github.com/uitTe/yike_yasb/issues"
+Changelog = "https://github.com/uitTe/yike_yasb/releases/latest"
+
+[project.optional-dependencies]
+dev = [
+    "yasb-yike[test,packaging]",
+    "pre-commit",
+    "ruff>=0.15.0",
+    "pyright==1.1.414",
+    "pyqt6-stubs==20250824",
+    "pycaw-stubs==20260927.20261008",
+    "types-pillow==10.2.0.20240822",
+]
+test = [
+    "pytest>=9.1",
+]
+packaging = [
+    "cx-freeze==8.7.2",
+    "setuptools>=84.1.0",
+]
+[tool.hatch.metadata]
+allow-direct-references = true
+
+[tool.hatch.version]
+path = "src/settings.py"
+pattern = "BUILD_VERSION = \"(?P<version>[^\"]+)\""
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/core"]
+
+[tool.pytest]
+minversion = "9.1"
+testpaths = ["tests"]
+pythonpath = ["src", "."]
+addopts = ["-ra"]
+strict = true
+faulthandler_timeout = "300"
+markers = [
+    "sdk: compares ctypes code with the Windows SDK; needs MSVC, skipped without it unless YASB_REQUIRE_SDK=1",
+]
+
+[tool.ruff]
+line-length = 120
+target-version = "py314"
+extend-exclude = [
+    "__pycache__",
+    ".github",
+    ".vscode",
+    "build",
+    "docs",
+    "demo"
+]
+
+[tool.ruff.lint]
+ignore = [
+    "F405",
+    "F403",
+    "E741",
+]
+select = ["I", "F", "UP", "G004"]
+fixable = ["ALL"]
+
+[tool.ruff.format]
+docstring-code-format     = true
+quote-style               = "double"
+indent-style              = "space"
+skip-magic-trailing-comma = false
+line-ending               = "cr-lf"
+
+[tool.pyright]
+include = ["."]
+exclude = ["**/__pycache__", "src/build", "src/dist"]
+extraPaths = ["src"]
+pythonVersion = "3.14"
+pythonPlatform = "Windows"
+typeCheckingMode = "strict"
+reportMissingImports = true
+reportUntypedFunctionDecorator = false

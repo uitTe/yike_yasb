@@ -1,0 +1,39 @@
+# 本地参考资料、实验、报告与安装包。
+/work/
+/releases/
+
+# 开发工具与虚拟环境。
+.vscode/
+.workbuddy/
+.venv/
+venv/
+
+# Python 缓存、测试缓存与构建产物。
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.cache/
+build/
+build_arm64/
+build_x64/
+dist/
+reports/
+
+# 运行数据、凭据与临时文件。
+data/
+.env
+.env.*
+*.log
+*.tmp
+*.temp
+*.lock
+*.sqlite
+*.sqlite-*
+*.db
+*.db-*
+*.jsonl
+*.dmp
+Thumbs.db
+compile_commands.json

@@ -1,0 +1,201 @@
+"""Classic Bluetooth audio connect/disconnect via KS property oneshots."""
+
+import ctypes
+import threading
+import time
+from ctypes import POINTER, byref
+
+from comtypes import (  # pyright: ignore[reportMissingTypeStubs]
+    CLSCTX_ALL,
+    GUID,
+    CoCreateInstance,
+)
+from pycaw.api.mmdeviceapi import PROPERTYKEY, IMMDevice, IMMDeviceEnumerator
+from pycaw.constants import AudioDeviceState, CLSID_MMDeviceEnumerator
+from pycaw.pycaw import AudioUtilities
+
+from core.utils.win32.bindings.audioclient import (
+    IConnector,
+    IDeviceTopology,
+    IID_IDeviceTopology,
+    IID_IKsControl,
+    IKsControl,
+)
+from core.utils.win32.constants import (
+    KSPROPERTY_ONESHOT_DISCONNECT,
+    KSPROPERTY_ONESHOT_RECONNECT,
+    KSPROPERTY_TYPE_GET,
+    KSPROPSETID_BtAudio,
+)
+from core.utils.win32.structs import KSPROPERTY
+
+# PKEY_Device_ContainerId (group render/capture endpoints of one physical device)
+_PKEY_CONTAINER = PROPERTYKEY()
+_PKEY_CONTAINER.fmtid = GUID("{8C7ED206-3F8A-4827-B3AB-AE9E1FAEFC6C}")
+_PKEY_CONTAINER.pid = 2
+
+_SETTLE_TIMEOUT_S = 10.0
+_SETTLE_POLL_S = 0.25
+
+
+def _mac_hex(address: str | int) -> str:
+    if isinstance(address, int):
+        return f"{address:012X}"
+    return "".join(c for c in address.upper() if c in "0123456789ABCDEF")
+
+
+def _id_has_mac(device_id: str, mac: str) -> bool:
+    if len(mac) != 12:
+        return False
+    compact = device_id.upper().replace(":", "").replace("-", "").replace("_", "")
+    return mac in compact
+
+
+def _oneshot(ks: IKsControl, prop_id: int) -> bool:
+    prop = KSPROPERTY(KSPROPSETID_BtAudio, prop_id, KSPROPERTY_TYPE_GET)
+    try:
+        ks.KsProperty(byref(prop), ctypes.sizeof(KSPROPERTY), None, 0)
+        return True
+    except Exception:
+        return False
+
+
+def _matching_endpoints(device_name: str):
+    needle = (device_name or "").casefold().strip()
+    if not needle:
+        return
+    for device in AudioUtilities.GetAllDevices():
+        if needle in (device.FriendlyName or "").casefold():
+            yield device
+
+
+def audio_is_connected(device_name: str) -> bool | None:
+    """True if any endpoint Active; False if all Unplugged; None if no endpoints."""
+    seen = False
+    for device in _matching_endpoints(device_name):
+        seen = True
+        if device.state == AudioDeviceState.Active:
+            return True
+    return False if seen else None
+
+
+def _activate_ks(enumerator: IMMDeviceEnumerator, device_id: str) -> IKsControl | None:
+    try:
+        ks_dev = enumerator.GetDevice(device_id)
+        return ks_dev.Activate(IID_IKsControl, CLSCTX_ALL, None).QueryInterface(IKsControl)
+    except Exception:
+        return None
+
+
+def _container_id(dev: IMMDevice) -> str | None:
+    try:
+        val = dev.OpenPropertyStore(0).GetValue(_PKEY_CONTAINER)
+        ptr = val.union.uhVal
+        if not ptr:
+            return None
+        return str(ctypes.cast(ptr, POINTER(GUID)).contents)
+    except Exception:
+        return None
+
+
+def _ks_controls(address: str | int, device_name: str = "") -> list[IKsControl]:
+    """KS filters for this device: seed by MAC/name, expand by ContainerId when available."""
+    mac = _mac_hex(address)
+    name_needle = (device_name or "").casefold().strip()
+    enumerator = CoCreateInstance(CLSID_MMDeviceEnumerator, IMMDeviceEnumerator, CLSCTX_ALL)
+
+    # (ks_filter_id, container_id|None, matched_by_mac_or_name)
+    candidates: list[tuple[str, str | None, bool]] = []
+    for device in AudioUtilities.GetAllDevices():
+        friendly = (device.FriendlyName or "").casefold()
+        try:
+            dev = enumerator.GetDevice(device.id)
+        except Exception:
+            continue
+        cid = _container_id(dev)
+        try:
+            itopo = dev.Activate(IID_IDeviceTopology, CLSCTX_ALL, None).QueryInterface(IDeviceTopology)
+            count = itopo.GetConnectorCount()
+        except Exception:
+            continue
+
+        for ci in range(count):
+            try:
+                conn = itopo.GetConnector(ci).QueryInterface(IConnector)
+                other_id = conn.GetDeviceIdConnectedTo()
+            except Exception:
+                continue
+
+            other_id_s = str(other_id) if other_id else ""
+            if "bth" not in other_id_s.lower():
+                continue
+            mac_ok = _id_has_mac(other_id_s, mac)
+            name_ok = bool(name_needle) and name_needle in friendly
+            candidates.append((other_id_s, cid, mac_ok or name_ok))
+
+    containers = {cid for _, cid, seed in candidates if seed and cid}
+    found: list[IKsControl] = []
+    seen: set[str] = set()
+    for other_id_s, cid, seed in candidates:
+        if containers:
+            if cid not in containers:
+                continue
+        elif not seed:
+            continue
+        if other_id_s in seen:
+            continue
+        seen.add(other_id_s)
+        ks = _activate_ks(enumerator, other_id_s)
+        if ks is not None:
+            found.append(ks)
+
+    return found
+
+
+def _wait_audio_state(
+    device_name: str,
+    want_connected: bool,
+    cancel: threading.Event | None,
+) -> str | None:
+    """None when audio matches want_connected; else cancelled/timeout."""
+    deadline = time.monotonic() + _SETTLE_TIMEOUT_S
+    while time.monotonic() < deadline:
+        if cancel is not None and cancel.is_set():
+            return "cancelled"
+        if audio_is_connected(device_name) == want_connected:
+            return None
+        if cancel is not None:
+            if cancel.wait(timeout=_SETTLE_POLL_S):
+                return "cancelled"
+        else:
+            time.sleep(_SETTLE_POLL_S)
+    return "timeout"
+
+
+def set_audio_connection(
+    address: str | int,
+    *,
+    connect: bool,
+    device_name: str = "",
+    cancel: threading.Event | None = None,
+) -> str | None:
+    """None = done; else error reason. Disconnect always oneshots."""
+    current = audio_is_connected(device_name)
+    if current is None:
+        return "not_audio_device"
+    if connect and current is True:
+        return None
+
+    controls = _ks_controls(address, device_name)
+    if not controls:
+        return "no_ks_controls"
+
+    prop = KSPROPERTY_ONESHOT_RECONNECT if connect else KSPROPERTY_ONESHOT_DISCONNECT
+    sent = False
+    for ks in controls:
+        if _oneshot(ks, prop):
+            sent = True
+    if not sent:
+        return "oneshot_failed"
+
+    return _wait_audio_state(device_name, connect, cancel)

@@ -1,0 +1,95 @@
+import logging
+import os
+import sys
+import threading
+
+from PyQt6.QtCore import QMetaObject, QProcess, Qt
+from PyQt6.QtWidgets import QApplication
+
+from core.application import YASBApplication
+from core.cli.server import CliPipeHandler
+from core.events.service import EventService
+from core.utils.process import start_independent_process
+from settings import IS_FROZEN
+
+_reload_lock = threading.Lock()
+_cli_pipe_handler: CliPipeHandler | None = None
+
+
+def reload_application(msg: str = "Reloading Application..."):
+    if not _reload_lock.acquire(blocking=False):
+        logging.warning("Reload already in progress, ignoring additional reload request.")
+        return
+    logging.info(msg)
+    args = list(sys.argv[1:] if IS_FROZEN else sys.argv)
+    if "--restart-wait" not in args:
+        args.append("--restart-wait")
+
+    if IS_FROZEN:
+        start_independent_process([sys.executable, *args])
+    else:
+        started, _pid = QProcess.startDetached(sys.executable, args)
+        if not started:
+            raise RuntimeError("YASB 重新启动失败。")
+
+    if _cli_pipe_handler is not None:
+        _cli_pipe_handler.stop_cli_pipe_server()
+
+    app = QApplication.instance()
+    if isinstance(app, YASBApplication):
+        if app.loop and app.close_event:
+            app.loop.call_soon_threadsafe(app.close_event.set)
+        else:
+            QMetaObject.invokeMethod(app, "quit", Qt.ConnectionType.QueuedConnection)
+
+
+def exit_application(msg: str = "Exiting Application..."):
+    logging.info(msg)
+    try:
+        if _cli_pipe_handler is not None:
+            _cli_pipe_handler.stop_cli_pipe_server()
+
+        app = QApplication.instance()
+        if isinstance(app, YASBApplication):
+            if app.loop and app.close_event:
+                app.loop.call_soon_threadsafe(app.close_event.set)
+            else:  # Should never happen while we use qasync
+                QMetaObject.invokeMethod(app, "quit", Qt.ConnectionType.QueuedConnection)
+    except:
+        os._exit(0)
+
+
+def process_cli_command(command: str):
+    """
+    Process CLI commands received from the Named Pipe server.
+    Args:
+        command (str): The command received from the CLI.
+    """
+    # Parse the command and options
+
+    parts = command.strip().split()
+    base_command = parts[0] if parts else ""
+
+    # Extract screen parameter if present
+    screen_name = None
+    if "--screen" in command:
+        screen_name = command.split("--screen", 1)[1].strip()
+    elif "-s" in command:
+        screen_name = command.split("-s", 1)[1].strip()
+
+    if base_command == "reload":
+        reload_application("Reloading Application from CLI...")
+
+    elif base_command == "stop":
+        exit_application("Exiting Application from CLI...")
+
+    elif base_command in ["show-bar", "hide-bar", "toggle-bar"]:
+        action = base_command.split("-")[0]
+        EventService().emit_event("handle_bar_cli", action, screen_name)
+
+
+def start_cli_server():
+    handler = CliPipeHandler(process_cli_command)
+    handler.start_cli_pipe_server()
+    global _cli_pipe_handler
+    _cli_pipe_handler = handler

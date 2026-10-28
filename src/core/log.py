@@ -1,0 +1,112 @@
+import faulthandler
+import logging
+import sys
+import warnings
+from collections.abc import Callable
+from dataclasses import dataclass
+from logging.handlers import RotatingFileHandler
+from os.path import join
+
+from PyQt6.QtCore import QMessageLogContext, QtMsgType, qFormatLogMessage, qInstallMessageHandler
+
+from core.config import get_config_dir
+from settings import APP_NAME, BUILD_VERSION, DEFAULT_LOG_FILENAME
+
+# Silence qasync debug logs
+qasync_logger = logging.getLogger("qasync")
+qasync_logger.setLevel(logging.WARNING)
+
+LOG_PATH = join(get_config_dir(), DEFAULT_LOG_FILENAME)
+
+LOG_FORMAT = "%(asctime)s,%(msecs)03d [%(levelname)s] [%(threadName)s] [%(name)s/%(filename)s:%(lineno)d]: %(message)s"
+LOG_DATETIME = "%Y-%m-%d %H:%M:%S"
+CONSOLE_FORMAT = "%(asctime)s,%(msecs)03d %(levelname)s: %(message)s"
+CONSOLE_DATETIME = "%H:%M:%S"
+CLI_LOG_FORMAT = "%(asctime)s,%(msecs)03d %(levelname)s: %(message)s"
+CLI_LOG_DATETIME = "%H:%M:%S"
+
+
+@dataclass
+class Format:
+    reset = "\033[0m"
+    green = "\033[92m"
+    yellow = "\033[93m"
+    red = "\033[91m"
+    red_bg = "\033[41m"
+    underline = "\033[4m"
+    gray = "\033[90m"
+    blue = "\033[94m"
+
+
+# ANSI escape codes for colors
+LOG_COLORS = {
+    "DEBUG": Format.blue,
+    "INFO": Format.green,
+    "WARNING": Format.yellow,
+    "ERROR": Format.red,
+    "CRITICAL": Format.red_bg,
+    "RESET": Format.reset,
+}
+
+
+class ColoredFormatter(logging.Formatter):
+    def format(self, record: logging.LogRecord) -> str:
+        log_color = LOG_COLORS.get(record.levelname, LOG_COLORS["RESET"])
+        record.levelname = f"{log_color}{record.levelname:>8}{LOG_COLORS['RESET']}"
+        return super().format(record)
+
+
+def _suppress_third_party_warnings():
+    """Suppress noisy warnings and logs from third-party libraries."""
+    logging.getLogger("asyncio").setLevel(logging.WARNING)
+    logging.getLogger("comtypes").setLevel(logging.ERROR)
+    warnings.filterwarnings("ignore", category=UserWarning, module="pycaw")
+
+
+# Suppress Qt internal messages (e.g. QObject::disconnect wildcard warnings from QWebSocket)
+_QT_SUPPRESSED_PREFIXES = ("QObject::disconnect", "Could not create pixmap from")
+_original_qt_handler: Callable[[QtMsgType, QMessageLogContext, str | None], None] | None = None
+
+
+def _qt_message_handler(msg_type: QtMsgType, context: QMessageLogContext, message: str | None) -> None:
+    if message and message.startswith(_QT_SUPPRESSED_PREFIXES):
+        return
+    if _original_qt_handler:
+        _original_qt_handler(msg_type, context, message)
+    else:
+        # qInstallMessageHandler returns None when replacing the default C++ handler.
+        formatted = qFormatLogMessage(msg_type, context, message)
+        if sys.stderr is not None:
+            sys.stderr.write(formatted + "\n")
+
+
+def _install_qt_message_filter():
+    global _original_qt_handler
+    _original_qt_handler = qInstallMessageHandler(_qt_message_handler)
+
+
+def init_logger():
+    _suppress_third_party_warnings()
+    _install_qt_message_filter()
+    # File handler should be without colors
+    file_handler = RotatingFileHandler(
+        join(get_config_dir(), DEFAULT_LOG_FILENAME), maxBytes=1024 * 1024, backupCount=5, encoding="utf-8"
+    )
+    file_handler.setLevel(logging.INFO)
+    file_handler.setFormatter(logging.Formatter(LOG_FORMAT, datefmt=LOG_DATETIME))
+    # Configure logging with colors
+    console_handler = logging.StreamHandler()
+    console_handler.setLevel(logging.INFO)
+    console_handler.setFormatter(ColoredFormatter(CONSOLE_FORMAT, datefmt=CONSOLE_DATETIME))
+    handlers: list[logging.Handler] = [file_handler, console_handler]
+    logging.basicConfig(level=logging.DEBUG, handlers=handlers)
+    # c_stack is dead on Windows
+    if file_handler.stream is not None:
+        faulthandler.enable(file=file_handler.stream, all_threads=True, c_stack=False)
+    logging.info("%s v%s", APP_NAME, BUILD_VERSION)
+
+
+def enable_debug_logging():
+    """Lower all root-logger handlers to DEBUG level."""
+    for handler in logging.root.handlers:
+        handler.setLevel(logging.DEBUG)

@@ -1,0 +1,388 @@
+/* 顶部合并组件。 */
+.bar-collapse-toggle {
+    color: #f2f2f2;
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    padding: 0;
+    margin: 0 4px 0 0;
+}
+.bar-collapse-toggle:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+.bar-collapse-toggle:focus {
+    border-color: #4cc2ff;
+}
+.power-menu-compact .button.lock.hover {
+    border-top-right-radius: 0;
+    border-top-left-radius: 0;
+}
+.power-menu-compact .button.task-manager.hover {
+    border-top-right-radius: 8px;
+    border-top-left-radius: 8px;
+}
+.power-menu-compact .button.task-manager .icon {
+    font-family: "Segoe Fluent Icons";
+}
+.system-status-widget .widget-container,
+.system-monitor-widget .widget-container,
+.notification-clock-widget .widget-container {
+    spacing: 4px;
+}
+.system-status-widget:hover,
+.system-monitor-widget:hover,
+.notification-clock-widget:hover {
+    background-color: rgba(255, 255, 255, 0.08);
+}
+.system-status-widget .icon,
+.notification-clock-widget .icon {
+    font-family: "Segoe Fluent Icons";
+    font-size: 16px;
+    padding: 0 3px;
+}
+.system-monitor-widget .icon {
+    font-family: "Segoe Fluent Icons";
+    font-size: 13px;
+    padding: 0 2px;
+}
+.system-status-widget .icon {
+    font-size: 14px;
+}
+.notification-clock-widget .notification-bell {
+    padding: 0;
+    margin: 0;
+    background: transparent;
+}
+.system-monitor-widget .label,
+.system-status-widget .label,
+.notification-clock-widget .label {
+    font-size: 12px;
+    margin: 0;
+    padding: 0 2px;
+}
+.system-monitor-widget .label,
+.notification-clock-widget .label {
+    padding: 0 3px;
+}
+.system-status-menu {
+    background-color: rgb(36, 36, 36);
+    min-width: 380px;
+    max-width: 380px;
+    border: 1px solid #454545;
+    border-radius: 10px;
+}
+.system-status-menu .section {
+    padding: 14px 16px;
+}
+.system-status-menu .status-detail {
+    padding: 3px 0;
+    font-size: 13px;
+}
+.system-status-menu .settings-button,
+.system-status-menu .source-selector {
+    background-color: #3d3d3d;
+    border: 1px solid #555555;
+    border-radius: 6px;
+    padding: 7px 12px;
+}
+.system-status-menu .settings-button:hover,
+.system-status-menu .source-selector:hover {
+    background-color: #505050;
+}
+.system-status-menu .slider {
+    padding: 6px 0;
+}
+.system-status-menu .slider .icon {
+    font-family: "Segoe Fluent Icons";
+    font-size: 18px;
+    min-width: 28px;
+}
+.system-status-menu .slider .value {
+    min-width: 40px;
+    padding: 0 8px;
+}
+.system-status-menu .source-selector {
+    font-family: "Segoe Fluent Icons";
+    padding: 6px;
+}
+.system-status-menu .quick-actions .button {
+    background-color: #3d3d3d;
+    border: 1px solid #555555;
+    border-radius: 6px;
+    padding: 10px;
+    margin: 0 4px;
+}
+.system-status-menu .quick-actions .button:hover {
+    background-color: #505050;
+}
+.system-status-menu .quick-actions .button.active {
+    background-color: #18506b;
+    border-color: #4cc2ff;
+}
+.system-status-menu .quick-actions .icon {
+    font-family: "Segoe Fluent Icons";
+    font-size: 18px;
+    padding-bottom: 6px;
+}
+.system-status-menu .slider-control {
+    background: transparent;
+    border: none;
+    min-height: 26px;
+    max-height: 26px;
+    padding: 0;
+    margin: 0;
+}
+.system-status-menu .slider-control::groove:horizontal {
+    height: 4px;
+    background: #555555;
+    border: none;
+    border-radius: 2px;
+}
+.system-status-menu .slider-control::sub-page:horizontal {
+    background: #4cc2ff;
+    border: none;
+    border-radius: 2px;
+}
+.system-status-menu .slider-control::add-page:horizontal {
+    background: #555555;
+    border: none;
+    border-radius: 2px;
+}
+.system-status-menu .slider-control::handle:horizontal {
+    background: #4cc2ff;
+    border: 4px solid #383838;
+    width: 10px;
+    border-radius: 9px;
+    margin: -7px 0;
+}
+.system-status-menu .slider-control::handle:horizontal:hover {
+    background: #79d1ff;
+    border-color: #484848;
+}
+.system-status-menu .slider-control::handle:horizontal:pressed {
+    background: #23a7e5;
+    border-color: #303030;
+}
+.system-status-menu .slider-control::handle:horizontal:focus {
+    border-color: #65727c;
+}
+.system-status-menu .slider-control::groove:horizontal:disabled,
+.system-status-menu .slider-control::add-page:horizontal:disabled {
+    background: #404040;
+}
+.system-status-menu .slider-control::sub-page:horizontal:disabled {
+    background: #707070;
+}
+.system-status-menu .slider-control::handle:horizontal:disabled {
+    background: #888888;
+    border-color: #303030;
+}
+.open-meteo-card.location-settings {
+    background-color: rgb(36, 36, 36);
+    min-width: 380px;
+    max-width: 380px;
+    border: 1px solid #454545;
+    border-radius: 10px;
+}
+.open-meteo-card .location-button {
+    background: #3d3d3d;
+    border: 1px solid #555555;
+    border-radius: 6px;
+    padding: 6px 12px;
+}
+.open-meteo-card .location-button:hover {
+    background: #505050;
+}
+.open-meteo-card .location-button:focus {
+    border-color: #4cc2ff;
+}
+.open-meteo-card .location-button.primary {
+    background: #4cc2ff;
+    border-color: #4cc2ff;
+    color: #111111;
+}
+.open-meteo-card .location-button.primary:hover {
+    background: #79d1ff;
+}
+.open-meteo-card .location-button:disabled {
+    background: #303030;
+    border-color: #404040;
+    color: #888888;
+}
+.open-meteo-card .location-tabs::pane {
+    border: none;
+    background: transparent;
+}
+.open-meteo-card .location-tabs QTabBar::tab {
+    background: #303030;
+    color: #cccccc;
+    border: none;
+    border-bottom: 2px solid transparent;
+    padding: 8px 12px;
+}
+.open-meteo-card .location-tabs QTabBar::tab:selected {
+    background: #3d3d3d;
+    color: #f2f2f2;
+    border-bottom-color: #4cc2ff;
+}
+.open-meteo-card .location-tabs QTabBar::tab:hover {
+    background: #454545;
+}
+.open-meteo-card .location-message {
+    color: #cccccc;
+    padding: 4px 0;
+}
+.open-meteo-card .search-results::item:selected {
+    background: #18506b;
+    color: #f2f2f2;
+}
+.system-monitor-popup {
+    background-color: rgb(36, 36, 36);
+    min-width: 420px;
+    max-width: 420px;
+}
+.system-monitor-popup .memory-graph {
+    color: #b18af4;
+}
+.system-monitor-popup .memory-graph-grid {
+    color: rgba(255, 255, 255, 0.06);
+}
+.system-monitor-popup .graph-container {
+    min-height: 56px;
+}
+.system-monitor-popup .stats {
+    padding: 6px 12px;
+}
+.system-monitor-popup .stats .stat-item {
+    padding: 4px 8px;
+    margin: 4px;
+}
+.system-monitor-popup .stats .stat-value {
+    font-size: 16px;
+    padding: 0 4px 6px 4px;
+}
+
+/* 日期通知面板。 */
+.date-notification-popup {
+    background: transparent;
+    border: none;
+}
+.date-notification-popup QWidget {
+    font-family: "Microsoft YaHei UI";
+    font-size: 12px;
+    color: #f2f2f2;
+    background: transparent;
+    border: none;
+    padding: 0;
+    margin: 0;
+}
+.date-notification-popup .notification-panel,
+.date-notification-popup .calendar-panel {
+    background: rgb(36, 36, 36);
+    border: 1px solid #454545;
+    border-radius: 10px;
+}
+.date-notification-popup .panel-title {
+    font-size: 15px;
+    font-weight: 600;
+}
+.date-notification-popup .lunar-date,
+.date-notification-popup .notification-time,
+.date-notification-popup .weekday {
+    color: #bcbcbc;
+}
+.date-notification-popup .weekday {
+    min-height: 24px;
+}
+.date-notification-popup .month-title {
+    font-size: 13px;
+    font-weight: 600;
+}
+.date-notification-popup .panel-button {
+    background: #333333;
+    border: 1px solid #484848;
+    border-radius: 5px;
+    padding: 5px 10px;
+    min-height: 18px;
+}
+.date-notification-popup .panel-button:hover,
+.date-notification-popup .dismiss-button:hover {
+    background: #444444;
+}
+.date-notification-popup .panel-button:pressed {
+    background: #292929;
+}
+.date-notification-popup .panel-button:checked {
+    background: #18506b;
+    border-color: #4cc2ff;
+}
+.date-notification-popup .panel-button:disabled {
+    color: #888888;
+}
+.date-notification-popup .chevron {
+    font-family: "Segoe UI";
+    font-size: 21px;
+    min-width: 20px;
+    padding: 2px 4px;
+    background: transparent;
+    border-color: transparent;
+}
+.date-notification-popup .calendar-collapse-button {
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    padding: 0;
+}
+.date-notification-popup .calendar-collapse-button:hover {
+    background: #3a3a3a;
+}
+.date-notification-popup .calendar-collapse-button:pressed {
+    background: #303030;
+}
+.date-notification-popup .calendar-collapse-button:focus {
+    border-color: #4cc2ff;
+}
+.date-notification-popup .empty-notifications {
+    color: #d4d4d4;
+    font-size: 13px;
+}
+.date-notification-popup .notification-card {
+    background: #303030;
+    border: 1px solid #414141;
+    border-radius: 7px;
+}
+.date-notification-popup .notification-app,
+.date-notification-popup .notification-title {
+    font-weight: 600;
+}
+.date-notification-popup .notification-body {
+    color: #dedede;
+}
+.date-notification-popup .notification-time {
+    font-size: 10px;
+}
+.date-notification-popup .dismiss-button {
+    font-family: "Segoe UI";
+    font-size: 18px;
+    border-radius: 4px;
+    padding: 0 5px;
+}
+.date-notification-popup QScrollBar:vertical {
+    background: transparent;
+    width: 5px;
+    margin: 2px 0;
+}
+.date-notification-popup QScrollBar::handle:vertical {
+    background: #777777;
+    border-radius: 2px;
+    min-height: 24px;
+}
+.date-notification-popup QScrollBar::add-line:vertical,
+.date-notification-popup QScrollBar::sub-line:vertical {
+    height: 0;
+}
+.date-notification-popup QAbstractItemView {
+    outline: none;
+    selection-background-color: transparent;
+    alternate-background-color: transparent;
+}
